@@ -2,7 +2,7 @@
   "name": "node-pg-knex-passport-template",
   "version": "0.0.0",
   "private": true,
-  "description": "Template Backend Express API with Knex, PostgreSQL, Passport, and Typescript.",
+  "description": "Backend Express API Template using Knex, PostgreSQL, Passport, and Typescript.",
   "keywords": [
     "example",
     "express",
