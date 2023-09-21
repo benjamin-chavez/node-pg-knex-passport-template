@@ -7,6 +7,7 @@ import { Strategy as LocalStrategy } from 'passport-local';
 import { User } from '../../@types/user';
 import knex from '../database/db';
 import asyncHandler from 'express-async-handler';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 
 passport.use(
   new LocalStrategy(async function verify(username, password, done) {
@@ -33,6 +34,53 @@ passport.use(
   })
 );
 
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env['GOOGLE_CLIENT_ID'],
+      clientSecret: process.env['GOOGLE_CLIENT_SECRET'],
+      callbackURL: 'http://localhost:5000/api/auth/google/redirect',
+      scope: ['profile', 'email'],
+      state: true,
+      passReqToCallback: true,
+    },
+
+    async function verify(request, accessToken, refreshToken, profile, done) {
+      try {
+        let user;
+        const provider = 'https://accounts.google.com';
+
+        const credential = await knex('federated_credentials')
+          .select('*')
+          .where({ provider: provider, subject: profile.id })
+          .first();
+
+        if (!credential) {
+          [user] = await knex('users')
+            .insert({
+              username: profile.emails[0].value || profile.displayName,
+            })
+            .returning('*');
+
+          await knex('federated_credentials').insert({
+            user_id: user.id,
+            provider,
+            subject: profile.id,
+          });
+        } else {
+          user = await knex('users')
+            .select('*')
+            .where({ id: credential.user_id })
+            .first();
+        }
+        return done(null, user);
+      } catch (err) {
+        done(err);
+      }
+    }
+  )
+);
+
 passport.serializeUser((user: User, done) => {
   process.nextTick(() => {
     done(null, user);
@@ -49,7 +97,7 @@ const router = Router();
 
 /**
  * @description:    Register a new user then Log in the new user
- * @route:          POST /api/users
+ * @route:          POST /api/auth/register
  * @access:         Public
  */
 router.post(
@@ -57,7 +105,7 @@ router.post(
   asyncHandler(async (req, res, next) => {
     try {
       const { username, password, isAdmin } = req.body;
-      const hashedPassword = await argon2.hash(req.body.password);
+      const hashedPassword = await argon2.hash(password);
 
       const [user] = await knex('users')
         .insert({
@@ -89,7 +137,7 @@ router.post(
 
 /**
  * @description:    Log in an existing user
- * @route:          POST /api/users
+ * @route:          POST /api/auth/login
  * @access:         Public
  */
 router.post('/login', (req, res, next) => {
@@ -120,7 +168,7 @@ router.post('/login', (req, res, next) => {
 
 /**
  * @description:    Log out the current user
- * @route:          POST /api/users
+ * @route:          POST /api/auth/logout
  * @access:         Public
  */
 router.post('/logout', (req, res, next) => {
@@ -133,5 +181,40 @@ router.post('/logout', (req, res, next) => {
     res.status(200).json({ message: 'User logged out successfully' });
   });
 });
+
+/**
+ * @description:    Redirect the user to Google for authentication.
+ * @route:          POST /api/auth/google
+ * @access:         Public
+ */
+router.get(
+  '/google',
+  passport.authenticate('google', {
+    scope: ['email', 'profile'],
+  })
+);
+
+/**
+ * @description:    Handle callback after Google has authenticated the user.
+ * @route:          POST /api/auth/google/redirect
+ * @access:         Public
+ */
+router.get(
+  '/google/redirect',
+  passport.authenticate('google', {
+    // failureRedirect: '/api/auth/failed',
+    failureFlash: true,
+  }),
+  function (req, res) {
+    // if (req.flash('error').length > 0) {
+    if (req.flash('error')) {
+      return res.status(401).json({ message: req.flash('error')[0] });
+    }
+
+    res.status(200).json({ message: 'Authentication successful' });
+    // res.redirect('/api/users');
+    // res.redirect('/api/auth/success');
+  }
+);
 
 export default router;

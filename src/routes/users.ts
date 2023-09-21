@@ -15,8 +15,8 @@ const router = Router();
  */
 router.get(
   '/',
-  protect,
-  admin,
+  // protect,
+  // admin,
   asyncHandler(async (req, res) => {
     const users: User[] = await knex('users');
     res.status(200).json({ message: 'Users retrieved successfully', users });

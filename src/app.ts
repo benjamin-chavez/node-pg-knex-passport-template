@@ -15,6 +15,7 @@ import {
   generalErrorHandler,
   notFoundHandler,
 } from './middleware/errorMiddleware';
+import flash from 'express-flash';
 
 const KnexSessionStore = ConnectSessionKnex(session);
 
@@ -24,6 +25,7 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+app.use(flash());
 
 app.use(
   session({
@@ -38,17 +40,43 @@ app.use(
   })
 );
 
-app.use(passport.authenticate('session'));
+// app.use(passport.authenticate('session'));
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.use('/api', indexRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/users', authRoutes);
+app.use('/api/auth', authRoutes);
 
 // app.use('/api/products', requiresAuth, productRoutes);
 
 app.get('/api/routes', (req, res) => {
   res.status(200).send(listEndpoints(app));
 });
+
+// /**
+//  * @description:    Log out the current user
+//  * @route:          GET /api/users/login/google
+//  * @access:         Public
+//  */
+// app.get('/login/google', passport.authenticate('google'));
+
+// /**
+//  * @description:    Log out the current user
+//  * @route:          POST /api/users/oauth2/redirect/google
+//  * @access:         Public
+//  */
+// app.get(
+//   '/auth/google/callback',
+//   // '/oauth2/redirect/google',
+//   passport.authenticate('google', {
+//     failureRedirect: '/login',
+//     failureMessage: true,
+//   }),
+//   function (req, res) {
+//     res.redirect('/');
+//   }
+// );
 
 app.use(notFoundHandler);
 app.use(generalErrorHandler);

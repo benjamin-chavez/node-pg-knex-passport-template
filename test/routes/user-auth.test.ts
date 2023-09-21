@@ -28,10 +28,10 @@ describe('API Auth Routes', () => {
     done();
   });
 
-  describe('POST /api/users/register', () => {
+  describe('POST /api/auth/register', () => {
     it('When valid user data is provided, then a new user is created in the database', async () => {
       const res = await request(app)
-        .post('/api/users/register')
+        .post('/api/auth/register')
         .send(TEST_USERS.REGISTER);
 
       expect(res.statusCode).toBe(201);
@@ -45,12 +45,12 @@ describe('API Auth Routes', () => {
     });
   });
 
-  describe('POST /api/users/login', () => {
+  describe('POST /api/auth/login', () => {
     let response: Response;
 
     beforeAll(async () => {
       response = await request(app)
-        .post('/api/users/login')
+        .post('/api/auth/login')
         .send(TEST_USERS.LOGIN);
     });
 
@@ -63,16 +63,16 @@ describe('API Auth Routes', () => {
     });
   });
 
-  describe('POST /api/users/logout', () => {
+  describe('POST /api/auth/logout', () => {
     const agent = request.agent(app);
     let response: Response;
 
     beforeAll(async () => {
-      await agent.post('/api/users/login').send(TEST_USERS.LOGOUT);
+      await agent.post('/api/auth/login').send(TEST_USERS.LOGOUT);
     });
 
     it('When a user is logged in, then the user should be logged out', async () => {
-      response = await agent.post('/api/users/logout');
+      response = await agent.post('/api/auth/logout');
       expect(response.statusCode).toBe(200);
     });
   });
@@ -80,7 +80,7 @@ describe('API Auth Routes', () => {
   describe('GET /api/users', () => {
     it('When users in database, then it should return the users', async () => {
       const agent = request.agent(app);
-      await agent.post('/api/users/login').send(TEST_USERS.ADMIN);
+      await agent.post('/api/auth/login').send(TEST_USERS.ADMIN);
       const response: Response = await agent.get('/api/users');
 
       expect(response.statusCode).toBe(200);
@@ -94,7 +94,7 @@ describe('API Auth Routes', () => {
       const agent = request.agent(app);
 
       const loginResponse = await agent
-        .post('/api/users/login')
+        .post('/api/auth/login')
         .send(TEST_USERS.BASIC);
       const userId = loginResponse.body.user.id;
 
